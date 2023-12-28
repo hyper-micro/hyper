@@ -43,40 +43,120 @@ func (c *Config) GetFloat64(key string) float64 {
 	return cast.ToFloat64(c.getValue(key))
 }
 
+func (c *Config) GetFloat64OrDefault(key string, def float64) float64 {
+	val := c.getValue(key)
+	if val == nil {
+		return def
+	}
+	return cast.ToFloat64(val)
+}
+
 func (c *Config) GetBool(key string) bool {
 	return cast.ToBool(c.getValue(key))
+}
+
+func (c *Config) GetBoolOrDefault(key string, def bool) bool {
+	val := c.getValue(key)
+	if val == nil {
+		return def
+	}
+	return cast.ToBool(val)
 }
 
 func (c *Config) GetString(key string) string {
 	return cast.ToString(c.getValue(key))
 }
 
+func (c *Config) GetStringOrDefault(key string, def string) string {
+	val := c.getValue(key)
+	if val == nil {
+		return def
+	}
+	return cast.ToString(val)
+}
+
 func (c *Config) GetInt(key string) int {
 	return cast.ToInt(c.getValue(key))
+}
+
+func (c *Config) GetIntOrDefault(key string, def int) int {
+	val := c.getValue(key)
+	if val == nil {
+		return def
+	}
+	return cast.ToInt(val)
 }
 
 func (c *Config) GetIntSlice(key string) []int {
 	return cast.ToIntSlice(c.getValue(key))
 }
 
+func (c *Config) GetIntSliceOrDefault(key string, def []int) []int {
+	val := c.getValue(key)
+	if val == nil {
+		return def
+	}
+	return cast.ToIntSlice(val)
+}
+
 func (c *Config) GetStringMap(key string) map[string]interface{} {
 	return cast.ToStringMap(c.getValue(key))
+}
+
+func (c *Config) GetStringMapOrDefault(key string, def map[string]interface{}) map[string]interface{} {
+	val := c.getValue(key)
+	if val == nil {
+		return def
+	}
+	return cast.ToStringMap(val)
 }
 
 func (c *Config) GetStringMapString(key string) map[string]string {
 	return cast.ToStringMapString(c.getValue(key))
 }
 
+func (c *Config) GetStringMapStringOrDefault(key string, def map[string]string) map[string]string {
+	val := c.getValue(key)
+	if val == nil {
+		return def
+	}
+	return cast.ToStringMapString(val)
+}
+
 func (c *Config) GetStringSlice(key string) []string {
 	return cast.ToStringSlice(c.getValue(key))
+}
+
+func (c *Config) GetStringSliceOrDefault(key string, def []string) []string {
+	val := c.getValue(key)
+	if val == nil {
+		return def
+	}
+	return cast.ToStringSlice(val)
 }
 
 func (c *Config) GetTime(key string) time.Time {
 	return cast.ToTime(c.getValue(key))
 }
 
+func (c *Config) GetTimeOrDefault(key string, def time.Time) time.Time {
+	val := c.getValue(key)
+	if val == nil {
+		return def
+	}
+	return cast.ToTime(val)
+}
+
 func (c *Config) GetDuration(key string) time.Duration {
 	return cast.ToDuration(c.getValue(key))
+}
+
+func (c *Config) GetDurationOrDefault(key string, def time.Duration) time.Duration {
+	val := c.getValue(key)
+	if val == nil {
+		return def
+	}
+	return cast.ToDuration(val)
 }
 
 func (c *Config) Get(key string) interface{} {
