@@ -8,11 +8,11 @@ import (
 	"github.com/hyper-micro/hyper/rest/router"
 )
 
-type Rest struct {
+type Router struct {
 	adapter router.HttpRouter
 }
 
-func New(adapterIDs ...string) (*Rest, error) {
+func NewRouter(adapterIDs ...string) (*Router, error) {
 	var adapterID = gin.AdaptName
 	if len(adapterIDs) > 0 {
 		adapterID = adapterIDs[0]
@@ -21,27 +21,27 @@ func New(adapterIDs ...string) (*Rest, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Rest{
+	return &Router{
 		adapter: routerAdapter,
 	}, nil
 }
 
-func (r *Rest) Group(path string, middlewares ...router.Middleware) router.IRouter {
+func (r *Router) Group(path string, middlewares ...router.Middleware) router.IRouter {
 	return r.adapter.Group(path, middlewares...)
 }
 
-func (r *Rest) Use(middlewares ...router.Middleware) router.IRoutes {
+func (r *Router) Use(middlewares ...router.Middleware) router.IRoutes {
 	return r.adapter.Use(middlewares...)
 }
 
-func (r *Rest) Get(path string, handler router.Handler) router.IRoutes {
+func (r *Router) Get(path string, handler router.Handler) router.IRoutes {
 	return r.adapter.Get(path, handler)
 }
 
-func (r *Rest) Post(path string, handler router.Handler) router.IRoutes {
+func (r *Router) Post(path string, handler router.Handler) router.IRoutes {
 	return r.adapter.Post(path, handler)
 }
 
-func (r *Rest) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	r.adapter.ServeHTTP(w, req)
 }

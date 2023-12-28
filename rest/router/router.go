@@ -7,11 +7,13 @@ import (
 
 type HttpRouter interface {
 	http.Handler
+
 	IRouter
 }
 
 type IRouter interface {
 	IRoutes
+
 	Group(string, ...Middleware) IRouter
 }
 
@@ -23,6 +25,7 @@ type IRoutes interface {
 
 type Context interface {
 	context.Context
+
 	GetRawData() ([]byte, error)
 	Next()
 	Abort()
