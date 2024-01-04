@@ -22,6 +22,8 @@ type Adapter struct {
 }
 
 func NewGinAdapter(engine *gin.Engine) router.HttpRouter {
+	engine.RedirectTrailingSlash = false
+
 	return &Adapter{
 		ginEngine: engine,
 		ginRouter: engine,
@@ -29,8 +31,20 @@ func NewGinAdapter(engine *gin.Engine) router.HttpRouter {
 	}
 }
 
+func (g *Adapter) SetConfig(conf router.Config) {
+	if conf.MaxMultipartMemory != nil {
+		g.ginEngine.MaxMultipartMemory = *conf.MaxMultipartMemory
+	}
+	if conf.UseRawPath != nil {
+		g.ginEngine.UseRawPath = *conf.UseRawPath
+	}
+}
+
 func (g *Adapter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	g.ginEngine.ServeHTTP(w, req)
+}
+
+func (g *Adapter) HTTP404Handler() {
 }
 
 func (g *Adapter) Group(path string, middlewares ...router.Middleware) router.IRouter {

@@ -1,11 +1,11 @@
-package zlog
+package log
 
 import (
 	"io"
 	"strings"
 
-	"github.com/hyper-micro/hyper/toolkit/slice"
-	"github.com/hyper-micro/hyper/zlog/writer"
+	"github.com/hyper-micro/hyper/log/writer"
+	"github.com/hyper-micro/hyper/slice"
 )
 
 type Logger interface {
@@ -52,6 +52,7 @@ type Config struct {
 	LocalTime      bool
 	Encoder        string
 	Caller         bool
+	Fn             bool
 }
 
 func NewLogger(conf Config) Logger {
@@ -82,6 +83,44 @@ func NewLogger(conf Config) Logger {
 		Writer:  writers,
 		Encoder: conf.Encoder,
 		Caller:  conf.Caller,
+		Fn:      conf.Fn,
 	})
 	return driver
+}
+
+var logger = NewLogger(Config{
+	Level:   "debug",
+	Encoder: "console",
+})
+
+func Debug(args ...interface{}) {
+	logger.Debug(args...)
+}
+
+func Info(args ...interface{}) {
+	logger.Info(args...)
+}
+
+func Warn(args ...interface{}) {
+	logger.Warn(args...)
+}
+
+func Error(args ...interface{}) {
+	logger.Error(args...)
+}
+
+func Debugf(format string, args ...interface{}) {
+	logger.Debugf(format, args...)
+}
+
+func Infof(format string, args ...interface{}) {
+	logger.Infof(format, args...)
+}
+
+func Warnf(format string, args ...interface{}) {
+	logger.Warnf(format, args...)
+}
+
+func Errorf(format string, args ...interface{}) {
+	logger.Errorf(format, args...)
 }

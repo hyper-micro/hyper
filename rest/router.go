@@ -12,7 +12,7 @@ type Router struct {
 	adapter router.HttpRouter
 }
 
-func NewRouter(adapterIDs ...string) (*Router, error) {
+func NewRouter(conf router.Config, adapterIDs ...string) (*Router, error) {
 	var adapterID = gin.AdaptName
 	if len(adapterIDs) > 0 {
 		adapterID = adapterIDs[0]
@@ -21,6 +21,9 @@ func NewRouter(adapterIDs ...string) (*Router, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	routerAdapter.SetConfig(conf)
+
 	return &Router{
 		adapter: routerAdapter,
 	}, nil

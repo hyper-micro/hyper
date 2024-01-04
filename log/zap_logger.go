@@ -1,4 +1,4 @@
-package zlog
+package log
 
 import (
 	"io"
@@ -28,6 +28,7 @@ type ZapLoggerConfig struct {
 	Writer  []io.Writer
 	Encoder string
 	Caller  bool
+	Fn      bool
 }
 
 func NewZapLogger(conf ZapLoggerConfig) Logger {
@@ -42,7 +43,9 @@ func NewZapLogger(conf ZapLoggerConfig) Logger {
 	encoderConfig := zap.NewProductionEncoderConfig()
 	encoderConfig.EncodeTime = zapcore.RFC3339TimeEncoder
 	encoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
-	encoderConfig.FunctionKey = "fn"
+	if conf.Fn {
+		encoderConfig.FunctionKey = "fn"
+	}
 	encoderConfig.MessageKey = "msg"
 
 	var encoder zapcore.Encoder
@@ -63,7 +66,12 @@ func NewZapLogger(conf ZapLoggerConfig) Logger {
 		zapcore.NewMultiWriteSyncer(syncer...),
 		atomicLevel,
 	)
-	z := zap.New(core, zap.WithCaller(conf.Caller), zap.AddCallerSkip(2)).Sugar()
+	z := zap.New(
+		core,
+		zap.WithCaller(conf.Caller),
+		zap.AddCallerSkip(2),
+	).Sugar()
+
 	return &zapLogger{
 		zap: z,
 	}

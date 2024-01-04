@@ -1,6 +1,8 @@
 package gin
 
 import (
+	"mime/multipart"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -33,6 +35,14 @@ func (c *ginAdapterContext) Value(key any) any {
 	return c.ginCtx.Value(key)
 }
 
+func (c *ginAdapterContext) Request() *http.Request {
+	return c.ginCtx.Request
+}
+
+func (c *ginAdapterContext) Writer() http.ResponseWriter {
+	return c.ginCtx.Writer
+}
+
 func (c *ginAdapterContext) GetRawData() ([]byte, error) {
 	return c.ginCtx.GetRawData()
 }
@@ -63,4 +73,41 @@ func (c *ginAdapterContext) Param(key string) string {
 
 func (c *ginAdapterContext) Query(key string) string {
 	return c.ginCtx.Query(key)
+}
+
+func (c *ginAdapterContext) PostForm(key string) string {
+	return c.ginCtx.PostForm(key)
+}
+
+func (c *ginAdapterContext) PostFormArray(key string) []string {
+	return c.ginCtx.PostFormArray(key)
+}
+
+func (c *ginAdapterContext) FormFile(name string) (*multipart.FileHeader, error) {
+	return c.ginCtx.FormFile(name)
+}
+
+func (c *ginAdapterContext) SetCookie(name, value string, maxAge int, path, domain string, secure, httpOnly bool, sameSite http.SameSite) {
+	c.ginCtx.SetSameSite(sameSite)
+	c.ginCtx.SetCookie(name, value, maxAge, path, domain, secure, httpOnly)
+}
+
+func (c *ginAdapterContext) Cookie(name string) (string, error) {
+	return c.ginCtx.Cookie(name)
+}
+
+func (c *ginAdapterContext) Status(code int) {
+	c.ginCtx.Status(code)
+}
+
+func (c *ginAdapterContext) Header(key, value string) {
+	c.ginCtx.Header(key, value)
+}
+
+func (c *ginAdapterContext) GetHeader(key string) string {
+	return c.ginCtx.GetHeader(key)
+}
+
+func (c *ginAdapterContext) Response(code int, contentType string, data []byte) {
+	c.ginCtx.Data(code, contentType, data)
 }
