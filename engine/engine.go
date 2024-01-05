@@ -26,6 +26,7 @@ type Server interface {
 }
 
 type Option struct {
+	Name            string
 	ShutdownSignal  []os.Signal
 	ShutdownHandler func(error)
 	Console         bool
@@ -52,15 +53,15 @@ func New(opt Option, servers ...Server) Server {
 }
 
 func (s *engine) Name() string {
-	return "HyperEngineServer"
+	return s.Option.Name
 }
 
 func (s *engine) Run() error {
 
-	s.print("%s: engine boot, pid is %d", s.Name(), os.Getpid())
+	s.Print("[%s] server boot, pid is %d", s.Name(), os.Getpid())
 
 	defer func() {
-		s.print("%s: engine stop, Bye!", s.Name())
+		s.Print("[%s] server stop, Bye!", s.Name())
 	}()
 
 	if s.Option.BeforeHandler != nil {
@@ -76,7 +77,7 @@ func (s *engine) Run() error {
 	for _, srv := range s.servers {
 		go func(srv Server) {
 			if fn := srv.BeforeRunHandler(); fn != nil {
-				s.print("%s: run beforeRunHandler: '%#v'", srv.Name(), fn)
+				s.Print("[%s] run beforeRunHandler: '%#v'", srv.Name(), fn)
 
 				if err := fn(srv); err != nil {
 					runErrChan <- fmt.Errorf("hyper.server: '%s' beforeRun err: %v", srv.Name(), err)
@@ -86,14 +87,14 @@ func (s *engine) Run() error {
 
 			var wrapErr error
 
-			s.print("%s: server start", srv.Name())
+			s.Print("[%s] server start", srv.Name())
 
 			if err := srv.Run(); err != nil {
 				wrapErr = errors.Wrap(wrapErr, fmt.Errorf("hyper.server: '%s' run err: %v", srv.Name(), err))
 			}
 
 			if fn := srv.AfterStopHandler(); fn != nil {
-				s.print("%s: run afterStopHandler: '%#v'", srv.Name(), fn)
+				s.Print("[%s] run afterStopHandler: '%#v'", srv.Name(), fn)
 
 				if err := fn(srv); err != nil {
 					wrapErr = errors.Wrap(wrapErr, fmt.Errorf("hyper.server: '%s' afterStop err: %v", srv.Name(), err))
@@ -109,11 +110,11 @@ func (s *engine) Run() error {
 			shutdownSign := make(chan os.Signal, 1)
 			signal.Notify(shutdownSign, s.Option.ShutdownSignal...)
 
-			s.print("%s: signal.Notify: %v", s.Name(), s.Option.ShutdownSignal)
+			s.Print("[%s] signal.Notify: %v", s.Name(), s.Option.ShutdownSignal)
 
 			recSign := <-shutdownSign
 
-			s.print("%s: receive signal: %v", s.Name(), recSign)
+			s.Print("[%s] receive signal: %v", s.Name(), recSign)
 
 			_ = s.shutdown()
 		}()
@@ -160,14 +161,14 @@ func (s *engine) shutdown() error {
 	var wrapErr error
 	for _, srv := range s.servers {
 		if fn := srv.BeforeShutdownHandler(); fn != nil {
-			s.print("%s: run beforeShutdownHandler: '%#v'", srv.Name(), fn)
+			s.Print("[%s] run beforeShutdownHandler: '%#v'", srv.Name(), fn)
 
 			if err := fn(srv); err != nil {
 				wrapErr = errors.Wrap(wrapErr, fmt.Errorf("hyper.server: '%s' beforeShutdown err: %v", srv.Name(), err))
 			}
 		}
 
-		s.print("%s: shutting down", srv.Name())
+		s.Print("[%s] shutting down", srv.Name())
 
 		if err := srv.Shutdown(); err != nil {
 			wrapErr = errors.Wrap(wrapErr, fmt.Errorf("hyper.server: '%s' shutdown err: %v", srv.Name(), err))
@@ -183,7 +184,7 @@ func (s *engine) shutdown() error {
 	return wrapErr
 }
 
-func (s *engine) print(format string, args ...interface{}) {
+func (s *engine) Print(format string, args ...interface{}) {
 	if s.Option.Console {
 		log.Infof(format, args...)
 	}
