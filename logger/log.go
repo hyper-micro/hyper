@@ -1,10 +1,10 @@
-package log
+package logger
 
 import (
 	"io"
 	"strings"
 
-	"github.com/hyper-micro/hyper/log/writer"
+	"github.com/hyper-micro/hyper/logger/writer"
 	"github.com/hyper-micro/hyper/slice"
 )
 

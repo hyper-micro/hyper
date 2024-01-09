@@ -60,7 +60,7 @@ func NewServer(opt Option) engine.Server {
 }
 
 func (s *Server) Name() string {
-	return "GRPCServer"
+	return s.Option.Name
 }
 
 func (s *Server) BeforeRunHandler() engine.BehaveHandler {

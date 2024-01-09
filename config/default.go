@@ -1,13 +1,17 @@
 package config
 
-var defaultConfig *Config
+var defaultConfig Config
 
 func InitDefault() error {
-	defaultConfig = New()
-	return defaultConfig.LoadPaths("./conf")
+	conf, err := New(PathTypePath, "./conf")
+	if err != nil {
+		return err
+	}
+	defaultConfig = conf
+	return nil
 }
 
-func Default() *Config {
+func Default() Config {
 	if defaultConfig == nil {
 		panic("config: uninitialized")
 	}

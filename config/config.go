@@ -13,6 +13,30 @@ import (
 	"github.com/spf13/cast"
 )
 
+type Config interface {
+	GetFloat64(key string) float64
+	GetFloat64OrDefault(key string, def float64) float64
+	GetBool(key string) bool
+	GetBoolOrDefault(key string, def bool) bool
+	GetString(key string) string
+	GetStringOrDefault(key string, def string) string
+	GetInt(key string) int
+	GetIntOrDefault(key string, def int) int
+	GetIntSlice(key string) []int
+	GetIntSliceOrDefault(key string, def []int) []int
+	GetStringMap(key string) map[string]interface{}
+	GetStringMapOrDefault(key string, def map[string]interface{}) map[string]interface{}
+	GetStringMapString(key string) map[string]string
+	GetStringMapStringOrDefault(key string, def map[string]string) map[string]string
+	GetStringSlice(key string) []string
+	GetStringSliceOrDefault(key string, def []string) []string
+	GetTime(key string) time.Time
+	GetTimeOrDefault(key string, def time.Time) time.Time
+	GetDuration(key string) time.Duration
+	GetDurationOrDefault(key string, def time.Duration) time.Duration
+	Get(key string) interface{}
+}
+
 type FileType uint8
 
 const (
@@ -24,26 +48,38 @@ const (
 )
 
 const (
+	PathTypeFile = 1
+	PathTypePath = 2
+)
+
+const (
 	defaultKeyDelim = "."
 )
 
-type Config struct {
+type config struct {
 	kv      map[string]map[string]interface{}
 	kvCache *sync.Map
 }
 
-func New() *Config {
-	return &Config{
+func New(pathType int, paths ...string) (Config, error) {
+	conf := &config{
 		kv:      make(map[string]map[string]interface{}),
 		kvCache: new(sync.Map),
 	}
+	var err error
+	if pathType == PathTypeFile {
+		err = conf.loadConfigs(paths...)
+	} else {
+		err = conf.loadPaths(paths...)
+	}
+	return conf, err
 }
 
-func (c *Config) GetFloat64(key string) float64 {
+func (c *config) GetFloat64(key string) float64 {
 	return cast.ToFloat64(c.getValue(key))
 }
 
-func (c *Config) GetFloat64OrDefault(key string, def float64) float64 {
+func (c *config) GetFloat64OrDefault(key string, def float64) float64 {
 	val := c.getValue(key)
 	if val == nil {
 		return def
@@ -51,11 +87,11 @@ func (c *Config) GetFloat64OrDefault(key string, def float64) float64 {
 	return cast.ToFloat64(val)
 }
 
-func (c *Config) GetBool(key string) bool {
+func (c *config) GetBool(key string) bool {
 	return cast.ToBool(c.getValue(key))
 }
 
-func (c *Config) GetBoolOrDefault(key string, def bool) bool {
+func (c *config) GetBoolOrDefault(key string, def bool) bool {
 	val := c.getValue(key)
 	if val == nil {
 		return def
@@ -63,11 +99,11 @@ func (c *Config) GetBoolOrDefault(key string, def bool) bool {
 	return cast.ToBool(val)
 }
 
-func (c *Config) GetString(key string) string {
+func (c *config) GetString(key string) string {
 	return cast.ToString(c.getValue(key))
 }
 
-func (c *Config) GetStringOrDefault(key string, def string) string {
+func (c *config) GetStringOrDefault(key string, def string) string {
 	val := c.getValue(key)
 	if val == nil {
 		return def
@@ -75,11 +111,11 @@ func (c *Config) GetStringOrDefault(key string, def string) string {
 	return cast.ToString(val)
 }
 
-func (c *Config) GetInt(key string) int {
+func (c *config) GetInt(key string) int {
 	return cast.ToInt(c.getValue(key))
 }
 
-func (c *Config) GetIntOrDefault(key string, def int) int {
+func (c *config) GetIntOrDefault(key string, def int) int {
 	val := c.getValue(key)
 	if val == nil {
 		return def
@@ -87,11 +123,11 @@ func (c *Config) GetIntOrDefault(key string, def int) int {
 	return cast.ToInt(val)
 }
 
-func (c *Config) GetIntSlice(key string) []int {
+func (c *config) GetIntSlice(key string) []int {
 	return cast.ToIntSlice(c.getValue(key))
 }
 
-func (c *Config) GetIntSliceOrDefault(key string, def []int) []int {
+func (c *config) GetIntSliceOrDefault(key string, def []int) []int {
 	val := c.getValue(key)
 	if val == nil {
 		return def
@@ -99,11 +135,11 @@ func (c *Config) GetIntSliceOrDefault(key string, def []int) []int {
 	return cast.ToIntSlice(val)
 }
 
-func (c *Config) GetStringMap(key string) map[string]interface{} {
+func (c *config) GetStringMap(key string) map[string]interface{} {
 	return cast.ToStringMap(c.getValue(key))
 }
 
-func (c *Config) GetStringMapOrDefault(key string, def map[string]interface{}) map[string]interface{} {
+func (c *config) GetStringMapOrDefault(key string, def map[string]interface{}) map[string]interface{} {
 	val := c.getValue(key)
 	if val == nil {
 		return def
@@ -111,11 +147,11 @@ func (c *Config) GetStringMapOrDefault(key string, def map[string]interface{}) m
 	return cast.ToStringMap(val)
 }
 
-func (c *Config) GetStringMapString(key string) map[string]string {
+func (c *config) GetStringMapString(key string) map[string]string {
 	return cast.ToStringMapString(c.getValue(key))
 }
 
-func (c *Config) GetStringMapStringOrDefault(key string, def map[string]string) map[string]string {
+func (c *config) GetStringMapStringOrDefault(key string, def map[string]string) map[string]string {
 	val := c.getValue(key)
 	if val == nil {
 		return def
@@ -123,11 +159,11 @@ func (c *Config) GetStringMapStringOrDefault(key string, def map[string]string) 
 	return cast.ToStringMapString(val)
 }
 
-func (c *Config) GetStringSlice(key string) []string {
+func (c *config) GetStringSlice(key string) []string {
 	return cast.ToStringSlice(c.getValue(key))
 }
 
-func (c *Config) GetStringSliceOrDefault(key string, def []string) []string {
+func (c *config) GetStringSliceOrDefault(key string, def []string) []string {
 	val := c.getValue(key)
 	if val == nil {
 		return def
@@ -135,11 +171,11 @@ func (c *Config) GetStringSliceOrDefault(key string, def []string) []string {
 	return cast.ToStringSlice(val)
 }
 
-func (c *Config) GetTime(key string) time.Time {
+func (c *config) GetTime(key string) time.Time {
 	return cast.ToTime(c.getValue(key))
 }
 
-func (c *Config) GetTimeOrDefault(key string, def time.Time) time.Time {
+func (c *config) GetTimeOrDefault(key string, def time.Time) time.Time {
 	val := c.getValue(key)
 	if val == nil {
 		return def
@@ -147,11 +183,11 @@ func (c *Config) GetTimeOrDefault(key string, def time.Time) time.Time {
 	return cast.ToTime(val)
 }
 
-func (c *Config) GetDuration(key string) time.Duration {
+func (c *config) GetDuration(key string) time.Duration {
 	return cast.ToDuration(c.getValue(key))
 }
 
-func (c *Config) GetDurationOrDefault(key string, def time.Duration) time.Duration {
+func (c *config) GetDurationOrDefault(key string, def time.Duration) time.Duration {
 	val := c.getValue(key)
 	if val == nil {
 		return def
@@ -159,11 +195,11 @@ func (c *Config) GetDurationOrDefault(key string, def time.Duration) time.Durati
 	return cast.ToDuration(val)
 }
 
-func (c *Config) Get(key string) interface{} {
+func (c *config) Get(key string) interface{} {
 	return c.getValue(key)
 }
 
-func (c *Config) getValue(key string) interface{} {
+func (c *config) getValue(key string) interface{} {
 	lk := strings.ToLower(key)
 	if cacheVal, ok := c.kvCache.Load(lk); ok {
 		return cacheVal
@@ -174,7 +210,7 @@ func (c *Config) getValue(key string) interface{} {
 	return val
 }
 
-func (c *Config) LoadPaths(paths ...string) error {
+func (c *config) loadPaths(paths ...string) error {
 	if len(paths) == 0 {
 		return errors.New("configuration path not set")
 	}
@@ -194,7 +230,7 @@ func (c *Config) LoadPaths(paths ...string) error {
 	return nil
 }
 
-func (c *Config) LoadConfigs(configFiles ...string) error {
+func (c *config) loadConfigs(configFiles ...string) error {
 	if len(configFiles) == 0 {
 		return errors.New("configuration file not set")
 	}
@@ -208,7 +244,7 @@ func (c *Config) LoadConfigs(configFiles ...string) error {
 	return nil
 }
 
-func (c *Config) loadConfig(configFile string) error {
+func (c *config) loadConfig(configFile string) error {
 	var (
 		fileFullName = path.Base(configFile)
 		fileExt      = path.Ext(configFile)
@@ -242,7 +278,7 @@ func (c *Config) loadConfig(configFile string) error {
 	return nil
 }
 
-func (c *Config) decodeReader(b []byte, cfg map[string]interface{}, fileType FileType) error {
+func (c *config) decodeReader(b []byte, cfg map[string]interface{}, fileType FileType) error {
 	dc, ok := decoders[fileType]
 	if !ok {
 		panic(fmt.Sprintf("fileType %v no decoder", fileType))
@@ -250,7 +286,7 @@ func (c *Config) decodeReader(b []byte, cfg map[string]interface{}, fileType Fil
 	return dc.Decode(b, cfg)
 }
 
-func (c *Config) getFileTypeByExtension(ext string) FileType {
+func (c *config) getFileTypeByExtension(ext string) FileType {
 	switch strings.ToLower(ext) {
 	case "yaml":
 		return YamlFileType
@@ -267,7 +303,7 @@ func (c *Config) getFileTypeByExtension(ext string) FileType {
 	}
 }
 
-func (c *Config) readLocalFile(file string) ([]byte, error) {
+func (c *config) readLocalFile(file string) ([]byte, error) {
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
 		return nil, err
@@ -275,7 +311,7 @@ func (c *Config) readLocalFile(file string) ([]byte, error) {
 	return b, nil
 }
 
-func (c *Config) getValueFromMaps(keys []string) interface{} {
+func (c *config) getValueFromMaps(keys []string) interface{} {
 	if len(keys) == 0 {
 		return nil
 	}

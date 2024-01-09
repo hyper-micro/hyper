@@ -7,10 +7,10 @@ import (
 	"sync"
 
 	"github.com/hyper-micro/hyper/errors"
-	"github.com/hyper-micro/hyper/log"
+	"github.com/hyper-micro/hyper/logger"
 )
 
-type BehaveHandler func(Server) error
+type BehaveHandler func(engine *Engine, srv Server) error
 
 type BehaveHandlerSet struct {
 	BeforeHandler, AfterHandler, BeforeShutdownHandler BehaveHandler
@@ -34,17 +34,18 @@ type Option struct {
 	AfterHandler    BehaveHandler
 }
 
-type engine struct {
+type Engine struct {
 	Option
 
-	servers  []Server
+	running  bool
 	shutting bool
+	servers  []Server
 	shutChan chan struct{}
 	mu       *sync.Mutex
 }
 
-func New(opt Option, servers ...Server) Server {
-	return &engine{
+func New(opt Option, servers ...Server) *Engine {
+	return &Engine{
 		Option:   opt,
 		servers:  servers,
 		mu:       new(sync.Mutex),
@@ -52,11 +53,18 @@ func New(opt Option, servers ...Server) Server {
 	}
 }
 
-func (s *engine) Name() string {
+func (s *Engine) Name() string {
 	return s.Option.Name
 }
 
-func (s *engine) Run() error {
+func (s *Engine) Run() error {
+	s.mu.Lock()
+	if s.running {
+		s.mu.Unlock()
+		return fmt.Errorf("server is already running")
+	}
+	s.mu.Unlock()
+	s.running = true
 
 	s.Print("[%s] server boot, pid is %d", s.Name(), os.Getpid())
 
@@ -65,7 +73,7 @@ func (s *engine) Run() error {
 	}()
 
 	if s.Option.BeforeHandler != nil {
-		if err := s.Option.BeforeHandler(s); err != nil {
+		if err := s.Option.BeforeHandler(s, s); err != nil {
 			return fmt.Errorf("engine: beforeHandler err: %v", err)
 		}
 	}
@@ -77,9 +85,7 @@ func (s *engine) Run() error {
 	for _, srv := range s.servers {
 		go func(srv Server) {
 			if fn := srv.BeforeRunHandler(); fn != nil {
-				s.Print("[%s] run beforeRunHandler: '%#v'", srv.Name(), fn)
-
-				if err := fn(srv); err != nil {
+				if err := fn(s, srv); err != nil {
 					runErrChan <- fmt.Errorf("hyper.server: '%s' beforeRun err: %v", srv.Name(), err)
 					return
 				}
@@ -94,9 +100,7 @@ func (s *engine) Run() error {
 			}
 
 			if fn := srv.AfterStopHandler(); fn != nil {
-				s.Print("[%s] run afterStopHandler: '%#v'", srv.Name(), fn)
-
-				if err := fn(srv); err != nil {
+				if err := fn(s, srv); err != nil {
 					wrapErr = errors.Wrap(wrapErr, fmt.Errorf("hyper.server: '%s' afterStop err: %v", srv.Name(), err))
 				}
 			}
@@ -137,7 +141,7 @@ func (s *engine) Run() error {
 	<-s.shutChan
 
 	if s.Option.AfterHandler != nil {
-		if err := s.Option.AfterHandler(s); err != nil {
+		if err := s.Option.AfterHandler(s, s); err != nil {
 			wrapErr = errors.Wrap(wrapErr, fmt.Errorf("engine: afterHandler err: %v", err))
 		}
 	}
@@ -145,25 +149,25 @@ func (s *engine) Run() error {
 	return wrapErr
 }
 
-func (s *engine) Shutdown() error {
+func (s *Engine) Shutdown() error {
 	return s.shutdown()
 }
 
-func (s *engine) shutdown() error {
+func (s *Engine) shutdown() error {
 	s.mu.Lock()
-	shutting := s.shutting
-	s.shutting = true
-	s.mu.Unlock()
-	if shutting {
+	if s.shutting {
+		s.mu.Unlock()
 		return nil
 	}
+	s.mu.Unlock()
+	s.shutting = true
 
 	var wrapErr error
 	for _, srv := range s.servers {
 		if fn := srv.BeforeShutdownHandler(); fn != nil {
 			s.Print("[%s] run beforeShutdownHandler: '%#v'", srv.Name(), fn)
 
-			if err := fn(srv); err != nil {
+			if err := fn(s, srv); err != nil {
 				wrapErr = errors.Wrap(wrapErr, fmt.Errorf("hyper.server: '%s' beforeShutdown err: %v", srv.Name(), err))
 			}
 		}
@@ -184,12 +188,12 @@ func (s *engine) shutdown() error {
 	return wrapErr
 }
 
-func (s *engine) Print(format string, args ...interface{}) {
+func (s *Engine) Print(format string, args ...interface{}) {
 	if s.Option.Console {
-		log.Infof(format, args...)
+		logger.Infof(format, args...)
 	}
 }
 
-func (s *engine) BeforeRunHandler() BehaveHandler      { panic("unreachable") }
-func (s *engine) BeforeShutdownHandler() BehaveHandler { panic("unreachable") }
-func (s *engine) AfterStopHandler() BehaveHandler      { panic("unreachable") }
+func (s *Engine) BeforeRunHandler() BehaveHandler      { panic("unreachable") }
+func (s *Engine) BeforeShutdownHandler() BehaveHandler { panic("unreachable") }
+func (s *Engine) AfterStopHandler() BehaveHandler      { panic("unreachable") }
