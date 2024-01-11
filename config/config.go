@@ -76,138 +76,145 @@ func New(pathType int, paths ...string) (Config, error) {
 }
 
 func (c *config) GetFloat64(key string) float64 {
-	return cast.ToFloat64(c.getValue(key))
+	return cast.ToFloat64(c.get(key))
 }
 
 func (c *config) GetFloat64OrDefault(key string, def float64) float64 {
-	val := c.getValue(key)
-	if val == nil {
+	val, ok := c.getValue(key)
+	if !ok {
 		return def
 	}
 	return cast.ToFloat64(val)
 }
 
 func (c *config) GetBool(key string) bool {
-	return cast.ToBool(c.getValue(key))
+	return cast.ToBool(c.get(key))
 }
 
 func (c *config) GetBoolOrDefault(key string, def bool) bool {
-	val := c.getValue(key)
-	if val == nil {
+	val, ok := c.getValue(key)
+	if !ok {
 		return def
 	}
 	return cast.ToBool(val)
 }
 
 func (c *config) GetString(key string) string {
-	return cast.ToString(c.getValue(key))
+	return cast.ToString(c.get(key))
 }
 
 func (c *config) GetStringOrDefault(key string, def string) string {
-	val := c.getValue(key)
-	if val == nil {
+	val, ok := c.getValue(key)
+	if !ok {
 		return def
 	}
 	return cast.ToString(val)
 }
 
 func (c *config) GetInt(key string) int {
-	return cast.ToInt(c.getValue(key))
+	return cast.ToInt(c.get(key))
 }
 
 func (c *config) GetIntOrDefault(key string, def int) int {
-	val := c.getValue(key)
-	if val == nil {
+	val, ok := c.getValue(key)
+	if !ok {
 		return def
 	}
 	return cast.ToInt(val)
 }
 
 func (c *config) GetIntSlice(key string) []int {
-	return cast.ToIntSlice(c.getValue(key))
+	return cast.ToIntSlice(c.get(key))
 }
 
 func (c *config) GetIntSliceOrDefault(key string, def []int) []int {
-	val := c.getValue(key)
-	if val == nil {
+	val, ok := c.getValue(key)
+	if !ok {
 		return def
 	}
 	return cast.ToIntSlice(val)
 }
 
 func (c *config) GetStringMap(key string) map[string]interface{} {
-	return cast.ToStringMap(c.getValue(key))
+	return cast.ToStringMap(c.get(key))
 }
 
 func (c *config) GetStringMapOrDefault(key string, def map[string]interface{}) map[string]interface{} {
-	val := c.getValue(key)
-	if val == nil {
+	val, ok := c.getValue(key)
+	if !ok {
 		return def
 	}
 	return cast.ToStringMap(val)
 }
 
 func (c *config) GetStringMapString(key string) map[string]string {
-	return cast.ToStringMapString(c.getValue(key))
+	return cast.ToStringMapString(c.get(key))
 }
 
 func (c *config) GetStringMapStringOrDefault(key string, def map[string]string) map[string]string {
-	val := c.getValue(key)
-	if val == nil {
+	val, ok := c.getValue(key)
+	if !ok {
 		return def
 	}
 	return cast.ToStringMapString(val)
 }
 
 func (c *config) GetStringSlice(key string) []string {
-	return cast.ToStringSlice(c.getValue(key))
+	return cast.ToStringSlice(c.get(key))
 }
 
 func (c *config) GetStringSliceOrDefault(key string, def []string) []string {
-	val := c.getValue(key)
-	if val == nil {
+	val, ok := c.getValue(key)
+	if !ok {
 		return def
 	}
 	return cast.ToStringSlice(val)
 }
 
 func (c *config) GetTime(key string) time.Time {
-	return cast.ToTime(c.getValue(key))
+	return cast.ToTime(c.get(key))
 }
 
 func (c *config) GetTimeOrDefault(key string, def time.Time) time.Time {
-	val := c.getValue(key)
-	if val == nil {
+	val, ok := c.getValue(key)
+	if !ok {
 		return def
 	}
 	return cast.ToTime(val)
 }
 
 func (c *config) GetDuration(key string) time.Duration {
-	return cast.ToDuration(c.getValue(key))
+	return cast.ToDuration(c.get(key))
 }
 
 func (c *config) GetDurationOrDefault(key string, def time.Duration) time.Duration {
-	val := c.getValue(key)
-	if val == nil {
+	val, ok := c.getValue(key)
+	if !ok {
 		return def
 	}
 	return cast.ToDuration(val)
 }
 
 func (c *config) Get(key string) interface{} {
-	return c.getValue(key)
+	return c.get(key)
 }
 
-func (c *config) getValue(key string) interface{} {
+func (c *config) get(key string) interface{} {
+	val, _ := c.getValue(key)
+	return val
+}
+
+func (c *config) getValue(key string) (interface{}, bool) {
 	lk := strings.ToLower(key)
 	if cacheVal, ok := c.kvCache.Load(lk); ok {
-		return cacheVal
+		return cacheVal, true
 	}
 	keys := strings.Split(lk, defaultKeyDelim)
-	val := c.getValueFromMaps(keys)
-	c.kvCache.Store(lk, val)
-	return val
+	val, ok := c.getValueFromMaps(keys)
+	if ok {
+		c.kvCache.Store(lk, val)
+	}
+	return val, ok
 }
 
 func (c *config) loadPaths(paths ...string) error {
@@ -311,9 +318,9 @@ func (c *config) readLocalFile(file string) ([]byte, error) {
 	return b, nil
 }
 
-func (c *config) getValueFromMaps(keys []string) interface{} {
+func (c *config) getValueFromMaps(keys []string) (interface{}, bool) {
 	if len(keys) == 0 {
-		return nil
+		return nil, false
 	}
 	fileKey := keys[0]
 	mapKey := keys[1:]
@@ -325,14 +332,14 @@ func (c *config) getValueFromMaps(keys []string) interface{} {
 	for _, k := range mapKey {
 		nval, ok = val.(map[string]interface{})
 		if !ok {
-			return nil
+			return nil, false
 		}
 		val, ok = nval[k]
 		if !ok {
-			return nil
+			return nil, false
 		}
 	}
-	return val
+	return val, true
 }
 
 func mapsKey2Lower(kv map[string]interface{}) {

@@ -15,6 +15,7 @@ func (c IniCodec) Decode(b []byte, v map[string]interface{}) error {
 	if err != nil {
 		return err
 	}
+
 	sections := cfg.Sections()
 	for i := 0; i < len(sections); i++ {
 		section := sections[i]

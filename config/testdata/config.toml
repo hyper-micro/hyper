@@ -1,0 +1,24 @@
+apiVersion = "apps/v1"
+kind = "Deployment"
+port = 8080
+
+[testData]
+name = "test"
+pi = 3.1415926
+switch = true
+time = "2022-04-19T13:15:58Z"
+zeroTime = ""
+duration = 100
+number = 102400
+numbers = [1,3,5,7]
+emptyNumbers = []
+zero = 0
+emptyString = ""
+emptyStrings = []
+strings = ["a", "b", "c"]
+
+[stringMap]
+key1 = "value1"
+key2 = "value2"
+
+[emptyStringMap]
