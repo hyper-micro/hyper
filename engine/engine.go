@@ -165,8 +165,6 @@ func (s *Engine) shutdown() error {
 	var wrapErr error
 	for _, srv := range s.servers {
 		if fn := srv.BeforeShutdownHandler(); fn != nil {
-			s.Print("[%s] run beforeShutdownHandler: '%#v'", srv.Name(), fn)
-
 			if err := fn(s, srv); err != nil {
 				wrapErr = errors.Wrap(wrapErr, fmt.Errorf("hyper.server: '%s' beforeShutdown err: %v", srv.Name(), err))
 			}
