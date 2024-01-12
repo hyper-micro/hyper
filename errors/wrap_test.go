@@ -1,7 +1,7 @@
 package errors
 
 import (
-	"errors"
+	stdErrors "errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,9 +9,9 @@ import (
 
 func TestWrap(t *testing.T) {
 	var (
-		wrapErr  = errors.New("wrapErr")
+		wrapErr  = stdErrors.New("wrapErr")
 		emptyErr error
-		err      = errors.New("err")
+		err      = stdErrors.New("err")
 	)
 
 	assert.Equal(t, Wrap(emptyErr, err), err)
