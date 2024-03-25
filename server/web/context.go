@@ -264,6 +264,65 @@ func (c *Context) JsonBinding(d any) error {
 	return validate.Struct(d)
 }
 
+/// Cookie
+
+func (c *Context) Cookie(name string) (string, error) {
+	cookie, err := c.r.Cookie(name)
+	if err != nil {
+		return "", err
+	}
+	val, _ := url.QueryUnescape(cookie.Value)
+	return val, nil
+}
+
+func (c *Context) SetCookie(name, value string, maxAge int, path, domain string, secure, httpOnly bool, sameSite http.SameSite) {
+	if path == "" {
+		path = "/"
+	}
+	http.SetCookie(c.w, &http.Cookie{
+		Name:     name,
+		Value:    url.QueryEscape(value),
+		MaxAge:   maxAge,
+		Path:     path,
+		Domain:   domain,
+		SameSite: sameSite,
+		Secure:   secure,
+		HttpOnly: httpOnly,
+	})
+}
+
+/// Response
+
+func (c *Context) Status(code int) {
+	c.w.WriteHeader(code)
+}
+
+func (c *Context) Header(key, value string) {
+	if value == "" {
+		c.w.Header().Del(key)
+		return
+	}
+	c.w.Header().Set(key, value)
+}
+
+func (c *Context) ResponseWithStatus(code int, data []byte) error {
+	c.Status(code)
+	_, err := c.w.Write(data)
+	return err
+}
+
+func (c *Context) Response(data []byte) error {
+	return c.ResponseWithStatus(http.StatusOK, data)
+}
+
+func (c *Context) Json(data any) error {
+	b, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	return c.Response(b)
+}
+
 /// context.Context
 
 func (c *Context) Deadline() (deadline time.Time, ok bool) {
