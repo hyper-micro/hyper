@@ -8,6 +8,8 @@ import (
 
 type Handler func(ctx *Context)
 
+type MiddlewareHandler func(ctx *Context, next func())
+
 type router struct {
 	r   *mux.Router
 	srv *Server
@@ -22,19 +24,24 @@ func newRouter(srv *Server, r *mux.Router) *router {
 
 func (r *router) wrapHandler(f Handler) func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
-		f(makeContext(r.srv, w, req))
+		ctx := makeContext(r.srv, w, req)
+		if ctx.IsAbort() {
+			return
+		}
+		f(ctx)
 	}
 }
 
-func (r *router) wrapMiddleware(f Handler) mux.MiddlewareFunc {
+func (r *router) wrapMiddleware(f MiddlewareHandler) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			ctx := makeContext(r.srv, w, req)
 			if ctx.IsAbort() {
 				return
 			}
-			f(ctx)
-			next.ServeHTTP(w, req)
+			f(ctx, func() {
+				next.ServeHTTP(w, req)
+			})
 		})
 	}
 }
@@ -75,7 +82,7 @@ func (r *router) Trace(path string, f Handler) {
 	r.r.HandleFunc(path, r.wrapHandler(f)).Methods(http.MethodTrace)
 }
 
-func (r *router) Use(fs ...Handler) {
+func (r *router) Use(fs ...MiddlewareHandler) {
 	var nfs []mux.MiddlewareFunc
 	for _, f := range fs {
 		nfs = append(nfs, r.wrapMiddleware(f))

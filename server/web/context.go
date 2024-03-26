@@ -35,7 +35,7 @@ func makeContext(srv *Server, w http.ResponseWriter, r *http.Request) *Context {
 	cCtx, ok := ctx.Value(requestCtxKey).(*Context)
 	if !ok {
 		cCtx = newContext(ctx, srv, w, r)
-		r.WithContext(context.WithValue(ctx, requestCtxKey, cCtx))
+		*r = *r.WithContext(context.WithValue(ctx, requestCtxKey, cCtx))
 	}
 	return cCtx
 }
