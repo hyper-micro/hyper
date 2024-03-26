@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/hyper-micro/hyper/logger/writer"
-	"github.com/hyper-micro/hyper/slice"
+	"github.com/hyper-micro/hyper/toolkit/slice"
 )
 
 type Logger interface {
