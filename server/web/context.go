@@ -320,7 +320,13 @@ func (c *Context) Json(data any) error {
 	if err != nil {
 		return err
 	}
+	c.Header("Content-Type", "application/json; charset=utf-8")
 	return c.Response(b)
+}
+
+func (c *Context) String(data string) error {
+	c.Header("Content-Type", "text/plain; charset=utf-8")
+	return c.Response([]byte(data))
 }
 
 /// context.Context
