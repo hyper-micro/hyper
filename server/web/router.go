@@ -99,3 +99,7 @@ func (r *router) HostPrefix(host string) *router {
 	nr := r.r.Host(host).Subrouter()
 	return newRouter(r.srv, nr)
 }
+
+func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	r.r.ServeHTTP(w, req)
+}
