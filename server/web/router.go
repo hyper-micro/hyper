@@ -6,9 +6,12 @@ import (
 	"github.com/gorilla/mux"
 )
 
-type Handler func(ctx *Context)
+type Router interface {
+}
 
-type MiddlewareHandler func(ctx *Context, next func())
+type Handler func(ctx Ctx)
+
+type MiddlewareHandler func(ctx Ctx, next func())
 
 type router struct {
 	r   *mux.Router

@@ -14,7 +14,59 @@ import (
 	"github.com/spf13/cast"
 )
 
-type Context struct {
+type Ctx interface {
+	context.Context
+
+	Request() *http.Request
+	Abort()
+	IsAbort() bool
+
+	Set(key string, value any)
+	Get(key string) (value any, exists bool)
+	GetString(key string) (s string)
+	GetBool(key string) (b bool)
+	GetInt(key string) (i int)
+	GetInt64(key string) (i64 int64)
+	GetFloat64(key string) (f64 float64)
+
+	Param(key string) string
+	ParamBool(key string) bool
+	ParamInt(key string) int
+	ParamInt64(key string) int64
+	ParamFloat64(key string) float64
+
+	QueryArray(key string) (values []string, ok bool)
+	Query(key string) (string, bool)
+	QueryString(key string) string
+	QueryBool(key string) bool
+	QueryInt(key string) int
+	QueryInt64(key string) int64
+	QueryFloat64(key string) float64
+
+	PostFormArray(key string) (values []string, ok bool)
+	PostForm(key string) (string, bool)
+	PostFormString(key string) string
+	PostFormBool(key string) bool
+	PostFormInt(key string) int
+	PostFormInt64(key string) int64
+	PostFormFloat64(key string) float64
+	FormFileHeader(name string) (*multipart.FileHeader, error)
+
+	JsonBinding(d any) error
+
+	GetHeader(key string) string
+	Header(key, value string)
+	Cookie(name string) (string, error)
+	SetCookie(name, value string, maxAge int, path, domain string, secure, httpOnly bool, sameSite http.SameSite)
+
+	Status(code int)
+	ResponseWithStatus(code int, data []byte) error
+	Response(data []byte) error
+	Json(data any) error
+	String(data string) error
+}
+
+type ctx struct {
 	ctx        context.Context
 	srv        *Server
 	mu         *sync.RWMutex
@@ -30,19 +82,19 @@ const requestCtxKey = "_hyper/contextKey"
 
 var validate = validator.New(validator.WithRequiredStructEnabled())
 
-func makeContext(srv *Server, w http.ResponseWriter, r *http.Request) *Context {
-	ctx := r.Context()
-	cCtx, ok := ctx.Value(requestCtxKey).(*Context)
+func makeContext(srv *Server, w http.ResponseWriter, r *http.Request) *ctx {
+	c := r.Context()
+	cCtx, ok := c.Value(requestCtxKey).(*ctx)
 	if !ok {
-		cCtx = newContext(ctx, srv, w, r)
-		*r = *r.WithContext(context.WithValue(ctx, requestCtxKey, cCtx))
+		cCtx = newContext(c, srv, w, r)
+		*r = *r.WithContext(context.WithValue(c, requestCtxKey, cCtx))
 	}
 	return cCtx
 }
 
-func newContext(ctx context.Context, srv *Server, w http.ResponseWriter, r *http.Request) *Context {
-	return &Context{
-		ctx: ctx,
+func newContext(c context.Context, srv *Server, w http.ResponseWriter, r *http.Request) *ctx {
+	return &ctx{
+		ctx: c,
 		srv: srv,
 		mu:  new(sync.RWMutex),
 		w:   w,
@@ -51,62 +103,62 @@ func newContext(ctx context.Context, srv *Server, w http.ResponseWriter, r *http
 	}
 }
 
-func (c *Context) Request() *http.Request {
+func (c *ctx) Request() *http.Request {
 	return c.r
 }
 
-func (c *Context) Abort() {
+func (c *ctx) Abort() {
 	c.abort = true
 }
 
-func (c *Context) IsAbort() bool {
+func (c *ctx) IsAbort() bool {
 	return c.abort
 }
 
 /// kv
 
-func (c *Context) Set(key string, value any) {
+func (c *ctx) Set(key string, value any) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.kv[key] = value
 }
 
-func (c *Context) Get(key string) (value any, exists bool) {
+func (c *ctx) Get(key string) (value any, exists bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	value, exists = c.kv[key]
 	return
 }
 
-func (c *Context) GetString(key string) (s string) {
+func (c *ctx) GetString(key string) (s string) {
 	if val, ok := c.Get(key); ok && val != nil {
 		s, _ = val.(string)
 	}
 	return
 }
 
-func (c *Context) GetBool(key string) (b bool) {
+func (c *ctx) GetBool(key string) (b bool) {
 	if val, ok := c.Get(key); ok && val != nil {
 		b, _ = val.(bool)
 	}
 	return
 }
 
-func (c *Context) GetInt(key string) (i int) {
+func (c *ctx) GetInt(key string) (i int) {
 	if val, ok := c.Get(key); ok && val != nil {
 		i, _ = val.(int)
 	}
 	return
 }
 
-func (c *Context) GetInt64(key string) (i64 int64) {
+func (c *ctx) GetInt64(key string) (i64 int64) {
 	if val, ok := c.Get(key); ok && val != nil {
 		i64, _ = val.(int64)
 	}
 	return
 }
 
-func (c *Context) GetFloat64(key string) (f64 float64) {
+func (c *ctx) GetFloat64(key string) (f64 float64) {
 	if val, ok := c.Get(key); ok && val != nil {
 		f64, _ = val.(float64)
 	}
@@ -115,30 +167,30 @@ func (c *Context) GetFloat64(key string) (f64 float64) {
 
 // Params
 
-func (c *Context) Param(key string) string {
+func (c *ctx) Param(key string) string {
 	vars := mux.Vars(c.r)
 	return vars[key]
 }
 
-func (c *Context) ParamBool(key string) bool {
+func (c *ctx) ParamBool(key string) bool {
 	return cast.ToBool(c.Param(key))
 }
 
-func (c *Context) ParamInt(key string) int {
+func (c *ctx) ParamInt(key string) int {
 	return cast.ToInt(c.Param(key))
 }
 
-func (c *Context) ParamInt64(key string) int64 {
+func (c *ctx) ParamInt64(key string) int64 {
 	return cast.ToInt64(c.Param(key))
 }
 
-func (c *Context) ParamFloat64(key string) float64 {
+func (c *ctx) ParamFloat64(key string) float64 {
 	return cast.ToFloat64(c.Param(key))
 }
 
 // Queries
 
-func (c *Context) initQueryCache() {
+func (c *ctx) initQueryCache() {
 	if c.queryCache == nil {
 		if c.r != nil {
 			c.queryCache = c.r.URL.Query()
@@ -148,47 +200,47 @@ func (c *Context) initQueryCache() {
 	}
 }
 
-func (c *Context) QueryArray(key string) (values []string, ok bool) {
+func (c *ctx) QueryArray(key string) (values []string, ok bool) {
 	c.initQueryCache()
 	values, ok = c.queryCache[key]
 	return
 }
 
-func (c *Context) Query(key string) (string, bool) {
+func (c *ctx) Query(key string) (string, bool) {
 	if values, ok := c.QueryArray(key); ok {
 		return values[0], ok
 	}
 	return "", false
 }
 
-func (c *Context) QueryString(key string) string {
+func (c *ctx) QueryString(key string) string {
 	value, _ := c.Query(key)
 	return value
 }
 
-func (c *Context) QueryBool(key string) bool {
+func (c *ctx) QueryBool(key string) bool {
 	value, _ := c.Query(key)
 	return cast.ToBool(value)
 }
 
-func (c *Context) QueryInt(key string) int {
+func (c *ctx) QueryInt(key string) int {
 	value, _ := c.Query(key)
 	return cast.ToInt(value)
 }
 
-func (c *Context) QueryInt64(key string) int64 {
+func (c *ctx) QueryInt64(key string) int64 {
 	value, _ := c.Query(key)
 	return cast.ToInt64(value)
 }
 
-func (c *Context) QueryFloat64(key string) float64 {
+func (c *ctx) QueryFloat64(key string) float64 {
 	value, _ := c.Query(key)
 	return cast.ToFloat64(value)
 }
 
 /// PostForm
 
-func (c *Context) initFormCache() {
+func (c *ctx) initFormCache() {
 	if c.formCache == nil {
 		c.formCache = make(url.Values)
 		_ = c.r.ParseMultipartForm(c.srv.MaxMultipartMemory)
@@ -196,45 +248,45 @@ func (c *Context) initFormCache() {
 	}
 }
 
-func (c *Context) PostFormArray(key string) (values []string, ok bool) {
+func (c *ctx) PostFormArray(key string) (values []string, ok bool) {
 	c.initFormCache()
 	values, ok = c.formCache[key]
 	return
 }
 
-func (c *Context) PostForm(key string) (string, bool) {
+func (c *ctx) PostForm(key string) (string, bool) {
 	if values, ok := c.PostFormArray(key); ok {
 		return values[0], ok
 	}
 	return "", false
 }
 
-func (c *Context) PostFormString(key string) string {
+func (c *ctx) PostFormString(key string) string {
 	value, _ := c.PostForm(key)
 	return value
 }
 
-func (c *Context) PostFormBool(key string) bool {
+func (c *ctx) PostFormBool(key string) bool {
 	value, _ := c.PostForm(key)
 	return cast.ToBool(value)
 }
 
-func (c *Context) PostFormInt(key string) int {
+func (c *ctx) PostFormInt(key string) int {
 	value, _ := c.PostForm(key)
 	return cast.ToInt(value)
 }
 
-func (c *Context) PostFormInt64(key string) int64 {
+func (c *ctx) PostFormInt64(key string) int64 {
 	value, _ := c.PostForm(key)
 	return cast.ToInt64(value)
 }
 
-func (c *Context) PostFormFloat64(key string) float64 {
+func (c *ctx) PostFormFloat64(key string) float64 {
 	value, _ := c.PostForm(key)
 	return cast.ToFloat64(value)
 }
 
-func (c *Context) FormFileHeader(name string) (*multipart.FileHeader, error) {
+func (c *ctx) FormFileHeader(name string) (*multipart.FileHeader, error) {
 	if c.r.MultipartForm == nil {
 		if err := c.r.ParseMultipartForm(c.srv.MaxMultipartMemory); err != nil {
 			return nil, err
@@ -250,13 +302,21 @@ func (c *Context) FormFileHeader(name string) (*multipart.FileHeader, error) {
 
 /// Header
 
-func (c *Context) GetHeader(key string) string {
+func (c *ctx) GetHeader(key string) string {
 	return c.r.Header.Get(key)
+}
+
+func (c *ctx) Header(key, value string) {
+	if value == "" {
+		c.w.Header().Del(key)
+		return
+	}
+	c.w.Header().Set(key, value)
 }
 
 /// Binding struct
 
-func (c *Context) JsonBinding(d any) error {
+func (c *ctx) JsonBinding(d any) error {
 	dc := json.NewDecoder(c.r.Body)
 	if err := dc.Decode(d); err != nil {
 		return err
@@ -266,7 +326,7 @@ func (c *Context) JsonBinding(d any) error {
 
 /// Cookie
 
-func (c *Context) Cookie(name string) (string, error) {
+func (c *ctx) Cookie(name string) (string, error) {
 	cookie, err := c.r.Cookie(name)
 	if err != nil {
 		return "", err
@@ -275,7 +335,7 @@ func (c *Context) Cookie(name string) (string, error) {
 	return val, nil
 }
 
-func (c *Context) SetCookie(name, value string, maxAge int, path, domain string, secure, httpOnly bool, sameSite http.SameSite) {
+func (c *ctx) SetCookie(name, value string, maxAge int, path, domain string, secure, httpOnly bool, sameSite http.SameSite) {
 	if path == "" {
 		path = "/"
 	}
@@ -293,29 +353,21 @@ func (c *Context) SetCookie(name, value string, maxAge int, path, domain string,
 
 /// Response
 
-func (c *Context) Status(code int) {
+func (c *ctx) Status(code int) {
 	c.w.WriteHeader(code)
 }
 
-func (c *Context) Header(key, value string) {
-	if value == "" {
-		c.w.Header().Del(key)
-		return
-	}
-	c.w.Header().Set(key, value)
-}
-
-func (c *Context) ResponseWithStatus(code int, data []byte) error {
+func (c *ctx) ResponseWithStatus(code int, data []byte) error {
 	c.Status(code)
 	_, err := c.w.Write(data)
 	return err
 }
 
-func (c *Context) Response(data []byte) error {
+func (c *ctx) Response(data []byte) error {
 	return c.ResponseWithStatus(http.StatusOK, data)
 }
 
-func (c *Context) Json(data any) error {
+func (c *ctx) Json(data any) error {
 	b, err := json.Marshal(data)
 	if err != nil {
 		return err
@@ -324,26 +376,26 @@ func (c *Context) Json(data any) error {
 	return c.Response(b)
 }
 
-func (c *Context) String(data string) error {
+func (c *ctx) String(data string) error {
 	c.Header("Content-Type", "text/plain; charset=utf-8")
 	return c.Response([]byte(data))
 }
 
 /// context.Context
 
-func (c *Context) Deadline() (deadline time.Time, ok bool) {
+func (c *ctx) Deadline() (deadline time.Time, ok bool) {
 	return c.ctx.Deadline()
 }
 
-func (c *Context) Done() <-chan struct{} {
+func (c *ctx) Done() <-chan struct{} {
 	return c.ctx.Done()
 }
 
-func (c *Context) Err() error {
+func (c *ctx) Err() error {
 	return c.ctx.Err()
 }
 
-func (c *Context) Value(key any) any {
+func (c *ctx) Value(key any) any {
 	if keyAsString, ok := key.(string); ok {
 		if val, exists := c.Get(keyAsString); exists {
 			return val
