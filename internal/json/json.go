@@ -1,9 +1,11 @@
 package json
 
-import "github.com/bytedance/sonic"
+import (
+	jsoniter "github.com/json-iterator/go"
+)
 
 var (
-	json = sonic.ConfigStd
+	json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 	Marshal = json.Marshal
 
