@@ -76,6 +76,7 @@ type ctx struct {
 	abort      bool
 	queryCache url.Values
 	formCache  url.Values
+	status     bool
 }
 
 const requestCtxKey = "_hyper/contextKey"
@@ -354,7 +355,10 @@ func (c *ctx) SetCookie(name, value string, maxAge int, path, domain string, sec
 /// Response
 
 func (c *ctx) Status(code int) {
-	c.w.WriteHeader(code)
+	if !c.status {
+		c.w.WriteHeader(code)
+	}
+	c.status = true
 }
 
 func (c *ctx) ResponseWithStatus(code int, data []byte) error {
