@@ -7,6 +7,19 @@ import (
 )
 
 type Router interface {
+	Get(path string, f Handler)
+	Head(path string, f Handler)
+	Post(path string, f Handler)
+	Put(path string, f Handler)
+	Patch(path string, f Handler)
+	Delete(path string, f Handler)
+	Connect(path string, f Handler)
+	Options(path string, f Handler)
+	Trace(path string, f Handler)
+	Any(path string, f Handler)
+	Use(fs ...MiddlewareHandler)
+	PathPrefix(prefix string) *router
+	HostPrefix(host string) *router
 }
 
 type Handler func(ctx Ctx)
@@ -83,6 +96,20 @@ func (r *router) Options(path string, f Handler) {
 
 func (r *router) Trace(path string, f Handler) {
 	r.r.HandleFunc(path, r.wrapHandler(f)).Methods(http.MethodTrace)
+}
+
+func (r *router) Any(path string, f Handler) {
+	r.r.HandleFunc(path, r.wrapHandler(f)).Methods(
+		http.MethodGet,
+		http.MethodHead,
+		http.MethodPost,
+		http.MethodPut,
+		http.MethodPatch,
+		http.MethodDelete,
+		http.MethodConnect,
+		http.MethodOptions,
+		http.MethodTrace,
+	)
 }
 
 func (r *router) Use(fs ...MiddlewareHandler) {
