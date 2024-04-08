@@ -36,7 +36,8 @@ type Server struct {
 	Option
 
 	*router
-	srv *http.Server
+	srv      *http.Server
+	handlers []HandlerFunc
 }
 
 func New(opt Option) *Server {
@@ -45,7 +46,7 @@ func New(opt Option) *Server {
 	srv.router = newRouter(srv, rr)
 	srv.srv = &http.Server{
 		Addr:              opt.Addr,
-		Handler:           rr,
+		Handler:           srv.router,
 		TLSConfig:         opt.TLSConfig,
 		ReadTimeout:       opt.ReadTimeout,
 		ReadHeaderTimeout: opt.ReadHeaderTimeout,
@@ -63,6 +64,19 @@ func New(opt Option) *Server {
 }
 
 func (s *Server) Run() error {
+
+	if len(s.handlers) > 0 {
+		h := s.srv.Handler
+		for i := len(s.handlers) - 1; i >= 0; i-- {
+			hf := s.handlers[i]
+			h = &handler{
+				h: h,
+				f: hf,
+			}
+		}
+		s.srv.Handler = h
+	}
+
 	var (
 		srvErr error
 	)
@@ -89,4 +103,19 @@ func (s *Server) Shutdown() error {
 	defer cancel()
 
 	return s.srv.Shutdown(ctx)
+}
+
+type HandlerFunc func(http.Handler, http.ResponseWriter, *http.Request)
+
+func (s *Server) Handler(hf HandlerFunc) {
+	s.handlers = append(s.handlers, hf)
+}
+
+type handler struct {
+	h http.Handler
+	f func(http.Handler, http.ResponseWriter, *http.Request)
+}
+
+func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	h.f(h.h, w, req)
 }
