@@ -59,8 +59,6 @@ type Ctx interface {
 	Cookie(name string) (string, error)
 	SetCookie(name, value string, maxAge int, path, domain string, secure, httpOnly bool, sameSite http.SameSite)
 
-	SetResponseWriter(w http.ResponseWriter)
-	ResponseWriter() http.ResponseWriter
 	Status(code int)
 	ResponseWithStatus(code int, data []byte) error
 	Response(data []byte) error
@@ -355,14 +353,6 @@ func (c *ctx) SetCookie(name, value string, maxAge int, path, domain string, sec
 }
 
 /// Response
-
-func (c *ctx) SetResponseWriter(w http.ResponseWriter) {
-	c.w = w
-}
-
-func (c *ctx) ResponseWriter() http.ResponseWriter {
-	return c.w
-}
 
 func (c *ctx) Status(code int) {
 	if !c.status {
