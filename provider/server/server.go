@@ -6,8 +6,10 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"sync"
 
 	"github.com/hyper-micro/hyper/config"
+	"github.com/hyper-micro/hyper/errors"
 	"github.com/hyper-micro/hyper/logger"
 )
 
@@ -19,15 +21,13 @@ type Provider interface {
 type App interface {
 	Run() error
 	Shutdown() error
+	Addr() string
+	Name() string
 }
 
 type CleanUpHandler func()
 
-type RegServeOption struct {
-	Conf config.Config
-}
-
-type RegServeHandler func(RegServeOption) (App, CleanUpHandler, error)
+type RegServeHandler func(config.Config) (App, CleanUpHandler, error)
 
 type serverProvider struct {
 	opt             Option
@@ -38,7 +38,7 @@ type serverProvider struct {
 	showHelpFlag    bool
 	showVersionFlag bool
 	inShutdown      bool
-	regServeOption  RegServeOption
+	conf            config.Config
 }
 
 type Option struct {
@@ -63,7 +63,7 @@ func NewProvider(opt Option) (Provider, func(), error) {
 }
 
 func (s *serverProvider) RegServe(f RegServeHandler) error {
-	app, cleanUp, err := f(s.regServeOption)
+	app, cleanUp, err := f(s.conf)
 	if err != nil {
 		return err
 	}
@@ -74,7 +74,6 @@ func (s *serverProvider) RegServe(f RegServeHandler) error {
 }
 
 func (s *serverProvider) Run() error {
-
 	if len(s.opt.ShutdownSigs) > 0 {
 		shutdownSignChan := make(chan os.Signal, 1)
 		signal.Notify(shutdownSignChan, s.opt.ShutdownSigs...)
@@ -86,24 +85,36 @@ func (s *serverProvider) Run() error {
 	}
 
 	defer func() {
-		s.shutdown()
 		s.stdLoggerPrint("Server stopped, Bye!")
 	}()
 
-	s.stdLoggerPrint("Load config file: %s", s.configFileFlag)
-	s.stdLoggerPrint("Version: %s, %s, %s", s.opt.Version, s.opt.BuildCommit, s.opt.BuildDate)
+	s.stdLoggerPrint("Load config file: %v", s.conf.FileNames())
+	s.stdLoggerPrint("Version: %s, Commit: %s, buildDate: %s", s.opt.Version, s.opt.BuildCommit, s.opt.BuildDate)
 	s.stdLoggerPrint("Pid: %v", os.Getpid())
 	s.stdLoggerPrint("Signal.Notify: %v", s.opt.ShutdownSigs)
 
-	var appErr = make(chan error)
-
+	var (
+		appErr error
+		wg     sync.WaitGroup
+	)
 	for _, app := range s.apps {
+		wg.Add(1)
 		go func(app App) {
-			appErr <- app.Run()
+			defer wg.Done()
+
+			s.stdLoggerPrint("%s listen: %s", app.Name(), app.Addr())
+			if err := app.Run(); err != nil {
+				s.stdErrLoggerPrint("%s run error: %v", app.Name(), err)
+				appErr = errors.Wrap(appErr, err)
+			}
+
+			s.shutdown()
 		}(app)
 	}
 
-	return <-appErr
+	wg.Wait()
+
+	return appErr
 }
 
 func (s *serverProvider) shutdown() {
@@ -114,7 +125,7 @@ func (s *serverProvider) shutdown() {
 	s.inShutdown = true
 
 	for _, app := range s.apps {
-		s.stdLoggerPrint("shutting down")
+		s.stdLoggerPrint("%s shutting down", app.Name())
 		if err := app.Shutdown(); err != nil {
 			s.stdErrLoggerPrint("shutdown failed: %v", err)
 		}
@@ -148,11 +159,11 @@ func (s *serverProvider) init() error {
 		os.Exit(0)
 	}
 
-	conf, err := config.New(config.PathTypePath, s.configFileFlag)
+	conf, err := config.New(config.PathTypePath, false, s.configFileFlag)
 	if err != nil {
 		return err
 	}
-	s.regServeOption.Conf = conf
+	s.conf = conf
 
 	return nil
 }
@@ -177,5 +188,5 @@ func (s *serverProvider) stdLoggerPrint(format string, args ...any) {
 }
 
 func (s *serverProvider) stdErrLoggerPrint(format string, args ...any) {
-	logger.Infof("[%s] %s", s.opt.AppName, fmt.Sprintf(format, args...))
+	logger.Errorf("[%s] %s", s.opt.AppName, fmt.Sprintf(format, args...))
 }
