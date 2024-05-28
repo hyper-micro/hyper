@@ -14,6 +14,7 @@ import (
 )
 
 type Config interface {
+	FileNames() []string
 	GetFloat64(key string) float64
 	GetFloat64OrDefault(key string, def float64) float64
 	GetBool(key string) bool
@@ -57,14 +58,17 @@ const (
 )
 
 type config struct {
-	kv      map[string]map[string]interface{}
-	kvCache *sync.Map
+	kv                map[string]map[string]interface{}
+	kvCache           *sync.Map
+	ignoreFileNameKey bool
+	fileNames         []string
 }
 
-func New(pathType int, paths ...string) (Config, error) {
+func New(pathType int, ignoreFileNameKey bool, paths ...string) (Config, error) {
 	conf := &config{
-		kv:      make(map[string]map[string]interface{}),
-		kvCache: new(sync.Map),
+		kv:                make(map[string]map[string]interface{}),
+		kvCache:           new(sync.Map),
+		ignoreFileNameKey: ignoreFileNameKey,
 	}
 	var err error
 	if pathType == PathTypeFile {
@@ -73,6 +77,10 @@ func New(pathType int, paths ...string) (Config, error) {
 		err = conf.loadPaths(paths...)
 	}
 	return conf, err
+}
+
+func (c *config) FileNames() []string {
+	return c.fileNames
 }
 
 func (c *config) GetFloat64(key string) float64 {
@@ -225,7 +233,7 @@ func (c *config) loadPaths(paths ...string) error {
 		p = formatPathSeparator(p)
 		p = strings.TrimRight(p, string(os.PathSeparator))
 
-		files, _ := ioutil.ReadDir(p)
+		files, _ := os.ReadDir(p)
 		for _, file := range files {
 			if file.IsDir() {
 				continue
@@ -255,8 +263,12 @@ func (c *config) loadConfig(configFile string) error {
 	var (
 		fileFullName = path.Base(configFile)
 		fileExt      = path.Ext(configFile)
-		fileName     = fileFullName[0 : len(fileFullName)-len(fileExt)]
+		fileName     = "_DEFAULT_"
 	)
+
+	if !c.ignoreFileNameKey {
+		fileName = fileFullName[0 : len(fileFullName)-len(fileExt)]
+	}
 
 	fileExt = strings.Trim(fileExt, ".")
 
@@ -281,6 +293,7 @@ func (c *config) loadConfig(configFile string) error {
 
 	mapsKey2Lower(kv)
 	c.kv[fileName] = kv
+	c.fileNames = append(c.fileNames, configFile)
 
 	return nil
 }
