@@ -14,7 +14,7 @@ type Provider interface {
 	Addr() string
 }
 
-type httpProvider struct {
+type rpcProvider struct {
 	addr string
 	opt  rpc.Option
 	srv  *rpc.Server
@@ -34,7 +34,7 @@ func NewProvider(conf config.Config) Provider {
 		},
 	}
 
-	p := &httpProvider{
+	p := &rpcProvider{
 		addr: addr,
 		opt:  opt,
 		srv:  rpc.New(opt),
@@ -44,18 +44,18 @@ func NewProvider(conf config.Config) Provider {
 	return p
 }
 
-func (p *httpProvider) Into() *rpc.Server {
+func (p *rpcProvider) Into() *rpc.Server {
 	return p.srv
 }
 
-func (p *httpProvider) Run() error {
+func (p *rpcProvider) Run() error {
 	return p.srv.Run()
 }
 
-func (p *httpProvider) Shutdown() error {
+func (p *rpcProvider) Shutdown() error {
 	return p.srv.Shutdown()
 }
 
-func (p *httpProvider) Addr() string {
+func (p *rpcProvider) Addr() string {
 	return p.addr
 }
