@@ -70,9 +70,13 @@ func (s *serverProvider) RegServe(f RegServeHandler) error {
 	if err != nil {
 		return err
 	}
+	if app != nil {
+		s.apps = append(s.apps, app)
+	}
+	if cleanUp != nil {
+		s.cleanUps = append(s.cleanUps, cleanUp)
+	}
 
-	s.apps = append(s.apps, app)
-	s.cleanUps = append(s.cleanUps, cleanUp)
 	return nil
 }
 
