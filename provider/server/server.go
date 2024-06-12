@@ -42,11 +42,14 @@ type serverProvider struct {
 }
 
 type Option struct {
-	AppName      string
-	Version      string
-	BuildCommit  string
-	BuildDate    string
-	ShutdownSigs []os.Signal
+	AppName              string
+	Version              string
+	BuildCommit          string
+	BuildDate            string
+	ShutdownSigs         []os.Signal
+	ConfigPathType       config.PathType
+	ConfigIgnoreFileName bool
+	ConfigDefault        string
 }
 
 func NewProvider(opt Option) (Provider, func(), error) {
@@ -138,8 +141,8 @@ func (s *serverProvider) shutdown() {
 func (s *serverProvider) init() error {
 	s.flagSet.Usage = func() {}
 	s.flagSet.SetOutput(io.Discard)
-	s.flagSet.StringVar(&s.configFileFlag, "c", "./conf/", "set configure file path")
-	s.flagSet.StringVar(&s.configFileFlag, "config", "./conf/", "set configure file path")
+	s.flagSet.StringVar(&s.configFileFlag, "c", s.opt.ConfigDefault, "set configure file path")
+	s.flagSet.StringVar(&s.configFileFlag, "config", s.opt.ConfigDefault, "set configure file path")
 	s.flagSet.BoolVar(&s.showHelpFlag, "h", false, "show help")
 	s.flagSet.BoolVar(&s.showHelpFlag, "help", false, "show help")
 	s.flagSet.BoolVar(&s.showVersionFlag, "v", false, "show version")
@@ -159,7 +162,7 @@ func (s *serverProvider) init() error {
 		os.Exit(0)
 	}
 
-	conf, err := config.New(config.PathTypePath, false, s.configFileFlag)
+	conf, err := config.New(s.opt.ConfigPathType, s.opt.ConfigIgnoreFileName, s.configFileFlag)
 	if err != nil {
 		return err
 	}
@@ -176,11 +179,11 @@ USAGE:
 A self-sufficient runtime for containers
 
 OPTIONS:
-   --config value, -c value  set configure file path (default: "./conf/config.yaml")
+   --config value, -c value  set configure file path (default: "%s")
    --version, -v             show version (default: false)
    --help, -h                show help (default: false)
 
-`)
+`, s.opt.ConfigDefault)
 }
 
 func (s *serverProvider) stdLoggerPrint(format string, args ...any) {
