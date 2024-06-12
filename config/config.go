@@ -3,7 +3,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -57,6 +56,7 @@ const (
 
 const (
 	defaultKeyDelim = "."
+	defaultFileKey  = "_DEFAULT_"
 )
 
 type config struct {
@@ -265,13 +265,9 @@ func (c *config) loadConfig(configFile string) error {
 	var (
 		fileFullName = path.Base(configFile)
 		fileExt      = path.Ext(configFile)
-		fileName     = "_DEFAULT_"
 	)
 
-	if !c.ignoreFileNameKey {
-		fileName = fileFullName[0 : len(fileFullName)-len(fileExt)]
-	}
-
+	fileName := fileFullName[0 : len(fileFullName)-len(fileExt)]
 	fileExt = strings.Trim(fileExt, ".")
 
 	if fileName == "" {
@@ -294,7 +290,17 @@ func (c *config) loadConfig(configFile string) error {
 	}
 
 	mapsKey2Lower(kv)
-	c.kv[fileName] = kv
+	if c.ignoreFileNameKey {
+		if _, ok := c.kv[defaultFileKey]; !ok {
+			c.kv[defaultFileKey] = make(map[string]interface{})
+		}
+		for k, v := range kv {
+			c.kv[defaultFileKey][k] = v
+		}
+	} else {
+		c.kv[fileName] = kv
+	}
+
 	c.fileNames = append(c.fileNames, configFile)
 
 	return nil
@@ -326,7 +332,7 @@ func (c *config) getFileTypeByExtension(ext string) FileType {
 }
 
 func (c *config) readLocalFile(file string) ([]byte, error) {
-	b, err := ioutil.ReadFile(file)
+	b, err := os.ReadFile(file)
 	if err != nil {
 		return nil, err
 	}
@@ -337,8 +343,18 @@ func (c *config) getValueFromMaps(keys []string) (interface{}, bool) {
 	if len(keys) == 0 {
 		return nil, false
 	}
-	fileKey := keys[0]
-	mapKey := keys[1:]
+	var (
+		fileKey string
+		mapKey  []string
+	)
+	if c.ignoreFileNameKey {
+		fileKey = defaultFileKey
+		mapKey = keys
+	} else {
+		fileKey = keys[0]
+		mapKey = keys[1:]
+	}
+
 	var (
 		val  interface{} = c.kv[fileKey]
 		nval map[string]interface{}
