@@ -48,9 +48,11 @@ const (
 	JsonFileType
 )
 
+type PathType int8
+
 const (
-	PathTypeFile = 1
-	PathTypePath = 2
+	PathTypeFile PathType = 1
+	PathTypePath PathType = 2
 )
 
 const (
@@ -64,7 +66,7 @@ type config struct {
 	fileNames         []string
 }
 
-func New(pathType int, ignoreFileNameKey bool, paths ...string) (Config, error) {
+func New(pathType PathType, ignoreFileNameKey bool, paths ...string) (Config, error) {
 	conf := &config{
 		kv:                make(map[string]map[string]interface{}),
 		kvCache:           new(sync.Map),
