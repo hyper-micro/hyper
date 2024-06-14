@@ -43,6 +43,7 @@ type serverProvider struct {
 
 type Option struct {
 	AppName              string
+	AppDesc              string
 	Version              string
 	BuildCommit          string
 	BuildDate            string
@@ -178,16 +179,16 @@ func (s *serverProvider) init() error {
 func (s *serverProvider) flagUsage() {
 	fmt.Printf(`
 USAGE:
-   app [options]
+   %s [options]
 
-A self-sufficient runtime for containers
+%s
 
 OPTIONS:
    --config value, -c value  set configure file path (default: "%s")
    --version, -v             show version (default: false)
    --help, -h                show help (default: false)
 
-`, s.opt.ConfigDefault)
+`, s.opt.AppName, s.opt.AppDesc, s.opt.ConfigDefault)
 }
 
 func (s *serverProvider) stdLoggerPrint(format string, args ...any) {
