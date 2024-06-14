@@ -69,7 +69,7 @@ func NewZapLogger(conf ZapLoggerConfig) Logger {
 	z := zap.New(
 		core,
 		zap.WithCaller(conf.Caller),
-		zap.AddCallerSkip(2),
+		zap.AddCallerSkip(1),
 	).Sugar()
 
 	return &zapLogger{
