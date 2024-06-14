@@ -1,7 +1,6 @@
 package websocket
 
 import (
-	"bytes"
 	"net"
 	"time"
 
@@ -17,26 +16,21 @@ const (
 type Conn struct {
 	srv  *Server
 	conn *websocket.Conn
-	buff *bytes.Buffer
 }
 
 func newConn(srv *Server, c *websocket.Conn) *Conn {
 	return &Conn{
 		srv:  srv,
 		conn: c,
-		buff: &bytes.Buffer{},
 	}
 }
 
 func (c *Conn) Read(p []byte) (int, error) {
-	_, b, err := c.conn.ReadMessage()
+	_, r, err := c.conn.NextReader()
 	if err != nil {
 		return 0, err
 	}
-	if _, err = c.buff.Write(b); err != nil {
-		return 0, err
-	}
-	return c.buff.Read(p)
+	return r.Read(p)
 }
 
 func (c *Conn) Write(p []byte) (n int, err error) {
