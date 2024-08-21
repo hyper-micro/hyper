@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"time"
 
 	"github.com/hyper-micro/hyper/config"
 	"github.com/hyper-micro/hyper/errors"
@@ -15,7 +16,7 @@ import (
 
 type Provider interface {
 	Run() error
-	RegServe(f RegServeHandler) error
+	RegServes(fs ...RegServeHandler) error
 }
 
 type App interface {
@@ -42,15 +43,16 @@ type serverProvider struct {
 }
 
 type Option struct {
-	AppName              string
-	AppDesc              string
-	Version              string
-	BuildCommit          string
-	BuildDate            string
-	ShutdownSigs         []os.Signal
-	ConfigPathType       config.PathType
-	ConfigIgnoreFileName bool
-	ConfigDefault        string
+	AppName               string
+	AppDesc               string
+	Version               string
+	BuildCommit           string
+	BuildDate             string
+	ShutdownSigs          []os.Signal
+	ShutdownDelayDuration time.Duration
+	ConfigPathType        config.PathType
+	ConfigIgnoreFileName  bool
+	ConfigDefault         string
 }
 
 func NewProvider(opt Option) (Provider, func(), error) {
@@ -66,16 +68,18 @@ func NewProvider(opt Option) (Provider, func(), error) {
 	return srv, nil, nil
 }
 
-func (s *serverProvider) RegServe(f RegServeHandler) error {
-	app, cleanUp, err := f(s.conf)
-	if err != nil {
-		return err
-	}
-	if app != nil {
-		s.apps = append(s.apps, app)
-	}
-	if cleanUp != nil {
-		s.cleanUps = append(s.cleanUps, cleanUp)
+func (s *serverProvider) RegServes(fs ...RegServeHandler) error {
+	for _, f := range fs {
+		app, cleanUp, err := f(s.conf)
+		if err != nil {
+			return err
+		}
+		if app != nil {
+			s.apps = append(s.apps, app)
+		}
+		if cleanUp != nil {
+			s.cleanUps = append(s.cleanUps, cleanUp)
+		}
 	}
 
 	return nil
@@ -88,6 +92,12 @@ func (s *serverProvider) Run() error {
 		go func() {
 			recSign := <-shutdownSignChan
 			s.stdLoggerPrint("Receive signal: %v", recSign)
+
+			if s.opt.ShutdownDelayDuration > 0 {
+				s.stdLoggerPrint("ShutdownDelayDuration %s", s.opt.ShutdownDelayDuration.String())
+				time.Sleep(s.opt.ShutdownDelayDuration)
+			}
+
 			s.shutdown()
 		}()
 	}
