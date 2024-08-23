@@ -15,8 +15,9 @@ import (
 )
 
 type Provider interface {
-	Run() error
+	RegInit(fs ...RegInitHandler)
 	RegServes(fs ...RegServeHandler) error
+	Run() error
 }
 
 type App interface {
@@ -30,9 +31,12 @@ type CleanUpHandler func()
 
 type RegServeHandler func(config.Config) (App, CleanUpHandler, error)
 
+type RegInitHandler func(config.Config) error
+
 type serverProvider struct {
 	opt             Option
 	apps            []App
+	inits           []RegInitHandler
 	cleanUps        []func()
 	flagSet         *flag.FlagSet
 	configFileFlag  string
@@ -85,6 +89,10 @@ func (s *serverProvider) RegServes(fs ...RegServeHandler) error {
 	return nil
 }
 
+func (s *serverProvider) RegInit(fs ...RegInitHandler) {
+	s.inits = append(s.inits, fs...)
+}
+
 func (s *serverProvider) Run() error {
 	if len(s.opt.ShutdownSigs) > 0 {
 		shutdownSignChan := make(chan os.Signal, 1)
@@ -110,6 +118,12 @@ func (s *serverProvider) Run() error {
 	s.stdLoggerPrint("Version: %s, Commit: %s, buildDate: %s", s.opt.Version, s.opt.BuildCommit, s.opt.BuildDate)
 	s.stdLoggerPrint("Pid: %v", os.Getpid())
 	s.stdLoggerPrint("Signal.Notify: %v", s.opt.ShutdownSigs)
+
+	for _, init := range s.inits {
+		if err := init(s.conf); err != nil {
+			return err
+		}
+	}
 
 	var (
 		appErr error
