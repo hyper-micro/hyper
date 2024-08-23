@@ -21,7 +21,9 @@ type rpcProvider struct {
 	conf config.Config
 }
 
-func NewProvider(conf config.Config) Provider {
+type ServerOption func(option *rpc.Option)
+
+func NewProvider(conf config.Config, serverOptions ...ServerOption) Provider {
 	addr := conf.GetStringOrDefault("server.rpc.addr", "0.0.0.0:18110")
 	opt := rpc.Option{
 		Config: rpc.Config{
@@ -32,6 +34,11 @@ func NewProvider(conf config.Config) Provider {
 			MaxSendMsgSize: conf.GetIntOrDefault("server.rpc.maxSendMsgSize", math.MaxInt32),
 			Reflection:     conf.GetBoolOrDefault("server.rpc.reflection", false),
 		},
+		ServiceOpts: nil,
+	}
+
+	for _, apply := range serverOptions {
+		apply(&opt)
 	}
 
 	p := &rpcProvider{

@@ -21,7 +21,9 @@ type httpProvider struct {
 	conf config.Config
 }
 
-func NewProvider(conf config.Config) Provider {
+type ServerOption func(option *web.Option)
+
+func NewProvider(conf config.Config, serverOptions ...ServerOption) Provider {
 	addr := conf.GetStringOrDefault("server.http.addr", ":8080")
 	timeout := conf.GetDurationOrDefault("server.http.timeout", 30*time.Second)
 	opt := web.Option{
@@ -33,6 +35,10 @@ func NewProvider(conf config.Config) Provider {
 			CertFile:        conf.GetString("server.http.certFile"),
 			KeyFile:         conf.GetString("server.http.keyFile"),
 		},
+	}
+
+	for _, apply := range serverOptions {
+		apply(&opt)
 	}
 
 	p := &httpProvider{
