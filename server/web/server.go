@@ -64,7 +64,6 @@ func New(opt Option) *Server {
 }
 
 func (s *Server) Run() error {
-
 	if len(s.handlers) > 0 {
 		h := s.srv.Handler
 		for i := len(s.handlers) - 1; i >= 0; i-- {

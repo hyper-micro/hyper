@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"time"
 
 	"github.com/hyper-micro/hyper/config"
 	"github.com/hyper-micro/hyper/errors"
@@ -14,8 +15,9 @@ import (
 )
 
 type Provider interface {
+	RegInit(fs ...RegInitHandler)
+	RegServes(fs ...RegServeHandler) error
 	Run() error
-	RegServe(f RegServeHandler) error
 }
 
 type App interface {
@@ -29,9 +31,12 @@ type CleanUpHandler func()
 
 type RegServeHandler func(config.Config) (App, CleanUpHandler, error)
 
+type RegInitHandler func(config.Config) error
+
 type serverProvider struct {
 	opt             Option
 	apps            []App
+	inits           []RegInitHandler
 	cleanUps        []func()
 	flagSet         *flag.FlagSet
 	configFileFlag  string
@@ -42,11 +47,16 @@ type serverProvider struct {
 }
 
 type Option struct {
-	AppName      string
-	Version      string
-	BuildCommit  string
-	BuildDate    string
-	ShutdownSigs []os.Signal
+	AppName               string
+	AppDesc               string
+	Version               string
+	BuildCommit           string
+	BuildDate             string
+	ShutdownSigs          []os.Signal
+	ShutdownDelayDuration time.Duration
+	ConfigPathType        config.PathType
+	ConfigIgnoreFileName  bool
+	ConfigDefault         string
 }
 
 func NewProvider(opt Option) (Provider, func(), error) {
@@ -62,15 +72,25 @@ func NewProvider(opt Option) (Provider, func(), error) {
 	return srv, nil, nil
 }
 
-func (s *serverProvider) RegServe(f RegServeHandler) error {
-	app, cleanUp, err := f(s.conf)
-	if err != nil {
-		return err
+func (s *serverProvider) RegServes(fs ...RegServeHandler) error {
+	for _, f := range fs {
+		app, cleanUp, err := f(s.conf)
+		if err != nil {
+			return err
+		}
+		if app != nil {
+			s.apps = append(s.apps, app)
+		}
+		if cleanUp != nil {
+			s.cleanUps = append(s.cleanUps, cleanUp)
+		}
 	}
 
-	s.apps = append(s.apps, app)
-	s.cleanUps = append(s.cleanUps, cleanUp)
 	return nil
+}
+
+func (s *serverProvider) RegInit(fs ...RegInitHandler) {
+	s.inits = append(s.inits, fs...)
 }
 
 func (s *serverProvider) Run() error {
@@ -80,6 +100,12 @@ func (s *serverProvider) Run() error {
 		go func() {
 			recSign := <-shutdownSignChan
 			s.stdLoggerPrint("Receive signal: %v", recSign)
+
+			if s.opt.ShutdownDelayDuration > 0 {
+				s.stdLoggerPrint("ShutdownDelayDuration %s", s.opt.ShutdownDelayDuration.String())
+				time.Sleep(s.opt.ShutdownDelayDuration)
+			}
+
 			s.shutdown()
 		}()
 	}
@@ -92,6 +118,12 @@ func (s *serverProvider) Run() error {
 	s.stdLoggerPrint("Version: %s, Commit: %s, buildDate: %s", s.opt.Version, s.opt.BuildCommit, s.opt.BuildDate)
 	s.stdLoggerPrint("Pid: %v", os.Getpid())
 	s.stdLoggerPrint("Signal.Notify: %v", s.opt.ShutdownSigs)
+
+	for _, init := range s.inits {
+		if err := init(s.conf); err != nil {
+			return err
+		}
+	}
 
 	var (
 		appErr error
@@ -138,8 +170,8 @@ func (s *serverProvider) shutdown() {
 func (s *serverProvider) init() error {
 	s.flagSet.Usage = func() {}
 	s.flagSet.SetOutput(io.Discard)
-	s.flagSet.StringVar(&s.configFileFlag, "c", "./conf/", "set configure file path")
-	s.flagSet.StringVar(&s.configFileFlag, "config", "./conf/", "set configure file path")
+	s.flagSet.StringVar(&s.configFileFlag, "c", s.opt.ConfigDefault, "set configure file path")
+	s.flagSet.StringVar(&s.configFileFlag, "config", s.opt.ConfigDefault, "set configure file path")
 	s.flagSet.BoolVar(&s.showHelpFlag, "h", false, "show help")
 	s.flagSet.BoolVar(&s.showHelpFlag, "help", false, "show help")
 	s.flagSet.BoolVar(&s.showVersionFlag, "v", false, "show version")
@@ -159,7 +191,7 @@ func (s *serverProvider) init() error {
 		os.Exit(0)
 	}
 
-	conf, err := config.New(config.PathTypePath, false, s.configFileFlag)
+	conf, err := config.New(s.opt.ConfigPathType, s.opt.ConfigIgnoreFileName, s.configFileFlag)
 	if err != nil {
 		return err
 	}
@@ -171,16 +203,16 @@ func (s *serverProvider) init() error {
 func (s *serverProvider) flagUsage() {
 	fmt.Printf(`
 USAGE:
-   app [options]
+   %s [options]
 
-A self-sufficient runtime for containers
+%s
 
 OPTIONS:
-   --config value, -c value  set configure file path (default: "./conf/config.yaml")
+   --config value, -c value  set configure file path (default: "%s")
    --version, -v             show version (default: false)
    --help, -h                show help (default: false)
 
-`)
+`, s.opt.AppName, s.opt.AppDesc, s.opt.ConfigDefault)
 }
 
 func (s *serverProvider) stdLoggerPrint(format string, args ...any) {

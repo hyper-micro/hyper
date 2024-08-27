@@ -9,7 +9,7 @@ import (
 )
 
 func TestConfigIni(t *testing.T) {
-	conf, err := New(PathTypeFile, "./testdata/config.ini")
+	conf, err := New(PathTypeFile, false, "./testdata/config.ini")
 	require.NoError(t, err)
 
 	testBaseConfigData(t, conf)
@@ -17,7 +17,7 @@ func TestConfigIni(t *testing.T) {
 }
 
 func TestConfigJson(t *testing.T) {
-	conf, err := New(PathTypeFile, "./testdata/config.json")
+	conf, err := New(PathTypeFile, false, "./testdata/config.json")
 	require.NoError(t, err)
 
 	testBaseConfigData(t, conf)
@@ -25,7 +25,7 @@ func TestConfigJson(t *testing.T) {
 }
 
 func TestConfigToml(t *testing.T) {
-	conf, err := New(PathTypeFile, "./testdata/config.toml")
+	conf, err := New(PathTypeFile, false, "./testdata/config.toml")
 	require.NoError(t, err)
 
 	testBaseConfigData(t, conf)
@@ -33,7 +33,7 @@ func TestConfigToml(t *testing.T) {
 }
 
 func TestConfigYaml(t *testing.T) {
-	conf, err := New(PathTypeFile, "./testdata/config.yaml")
+	conf, err := New(PathTypeFile, false, "./testdata/config.yaml")
 	require.NoError(t, err)
 
 	testBaseConfigData(t, conf)
