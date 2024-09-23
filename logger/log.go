@@ -2,10 +2,10 @@ package logger
 
 import (
 	"io"
+	"slices"
 	"strings"
 
 	"github.com/hyper-micro/hyper/logger/writer"
-	"github.com/hyper-micro/hyper/toolkit/slice"
 )
 
 type Logger interface {
@@ -62,7 +62,7 @@ func NewLogger(conf Config) Logger {
 
 	var writers []io.Writer
 
-	if slice.ContainsString("file", conf.Output) {
+	if slices.Contains(conf.Output, "file") {
 		if conf.FilePath != "" {
 			fileWriter := writer.NewLumberJackWriter(writer.LumberJackConfig{
 				FilePath:       conf.FilePath,
@@ -74,7 +74,8 @@ func NewLogger(conf Config) Logger {
 			writers = append(writers, fileWriter)
 		}
 	}
-	if slice.ContainsString("stdout", conf.Output) {
+
+	if slices.Contains(conf.Output, "stdout") {
 		writers = append(writers, writer.NewStdoutWriter())
 	}
 
