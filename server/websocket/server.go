@@ -10,7 +10,6 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/hyper-micro/hyper/logger"
-	"github.com/hyper-micro/hyper/toolkit/slice"
 )
 
 type Config struct {
@@ -109,14 +108,7 @@ func (s *Server) Shutdown() error {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if !slice.ContainsString("mqtt", websocket.Subprotocols(r)) {
-		s.Option.Logger.Errorf("websocket: Client does not support mqtt sub Protocol, remoteAddr: %s", r.RemoteAddr)
-		return
-	}
-
-	var header = make(http.Header)
-	header.Add("Sec-Websocket-Protocol", "mqtt")
-	wsConn, err := s.up.Upgrade(w, r, header)
+	wsConn, err := s.up.Upgrade(w, r, make(http.Header))
 	if err != nil {
 		s.Option.Logger.Errorf("websocket: Connect err: %s, remoteAddr: %s", err.Error(), r.RemoteAddr)
 		return

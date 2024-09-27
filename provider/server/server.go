@@ -29,7 +29,7 @@ type App interface {
 
 type CleanUpHandler func()
 
-type RegServeHandler func(config.Config) (App, CleanUpHandler, error)
+type RegServeHandler func(config.Config) ([]App, CleanUpHandler, error)
 
 type RegInitHandler func(config.Config) error
 
@@ -74,12 +74,12 @@ func NewProvider(opt Option) (Provider, func(), error) {
 
 func (s *serverProvider) RegServes(fs ...RegServeHandler) error {
 	for _, f := range fs {
-		app, cleanUp, err := f(s.conf)
+		apps, cleanUp, err := f(s.conf)
 		if err != nil {
 			return err
 		}
-		if app != nil {
-			s.apps = append(s.apps, app)
+		if len(apps) > 0 {
+			s.apps = append(s.apps, apps...)
 		}
 		if cleanUp != nil {
 			s.cleanUps = append(s.cleanUps, cleanUp)
