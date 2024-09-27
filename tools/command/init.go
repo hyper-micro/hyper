@@ -164,8 +164,8 @@ func (cmd *InitCommand) cleanUpGit(projectPath string) error {
 func (cmd *InitCommand) replaceKeywords(projectPath string) error {
 	var src2replace = map[string]string{
 		config.HyperProjectTemplateGoModName: cmd.args.Mod,
-		"{{project-camel-name}}":             cmd.projectCamelName(),
-		"{{project-camel-name-upper}}":       cmd.projectCamelNameUpper(),
+		"projectTemplateService":             cmd.projectCamelName(),
+		"ProjectTemplateService":             cmd.projectCamelNameUpper(),
 	}
 
 	return filepath.Walk(projectPath, func(path string, info fs.FileInfo, err error) error {
