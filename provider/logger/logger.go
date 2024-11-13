@@ -15,14 +15,15 @@ type loggerProvider struct {
 
 func NewProvider(conf config.Config) (Provider, func(), error) {
 	instance := logger.NewLogger(logger.Config{
-		Output:         []string{"file"},
+		Output:         conf.GetStringSliceOrDefault("log.logger.output", []string{"stdout"}),
 		FilePath:       conf.GetStringOrDefault("log.logger.path", "logs"),
 		Level:          conf.GetStringOrDefault("log.logger.level", "error"),
 		MaxRotatedSize: conf.GetInt("log.logger.rotatedSize"),
 		MaxRetainDay:   conf.GetInt("log.logger.retainDay"),
 		MaxRetainFiles: conf.GetInt("log.logger.retainFiles"),
-		Encoder:        "json",
+		Encoder:        conf.GetStringOrDefault("log.logger.encoder", "json"),
 		Caller:         true,
+		CallerSkip:     conf.GetIntOrDefault("log.logger.callerSkip", 2),
 	})
 	return &loggerProvider{logger: instance}, func() {}, nil
 }

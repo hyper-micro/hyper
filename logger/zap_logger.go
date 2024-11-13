@@ -24,11 +24,12 @@ const (
 )
 
 type ZapLoggerConfig struct {
-	Level   string
-	Writer  []io.Writer
-	Encoder string
-	Caller  bool
-	Fn      bool
+	Level      string
+	Writer     []io.Writer
+	Encoder    string
+	Caller     bool
+	Fn         bool
+	CallerSkip int
 }
 
 func NewZapLogger(conf ZapLoggerConfig) Logger {
@@ -69,7 +70,7 @@ func NewZapLogger(conf ZapLoggerConfig) Logger {
 	z := zap.New(
 		core,
 		zap.WithCaller(conf.Caller),
-		zap.AddCallerSkip(1),
+		zap.AddCallerSkip(2),
 	).Sugar()
 
 	return &zapLogger{

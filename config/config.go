@@ -240,8 +240,11 @@ func (c *config) loadPaths(paths ...string) error {
 			if file.IsDir() {
 				continue
 			}
+
 			configFile := strings.Join([]string{p, file.Name()}, string(os.PathSeparator))
-			_ = c.loadConfig(configFile)
+			if err := c.loadConfig(configFile); err != nil {
+				return fmt.Errorf("config file '%s' parse err: %v", configFile, err)
+			}
 		}
 	}
 	return nil

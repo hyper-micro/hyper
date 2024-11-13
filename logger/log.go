@@ -53,6 +53,7 @@ type Config struct {
 	Encoder        string
 	Caller         bool
 	Fn             bool
+	CallerSkip     int
 }
 
 func NewLogger(conf Config) Logger {
@@ -80,11 +81,12 @@ func NewLogger(conf Config) Logger {
 	}
 
 	driver := NewZapLogger(ZapLoggerConfig{
-		Level:   conf.Level,
-		Writer:  writers,
-		Encoder: conf.Encoder,
-		Caller:  conf.Caller,
-		Fn:      conf.Fn,
+		Level:      conf.Level,
+		Writer:     writers,
+		Encoder:    conf.Encoder,
+		Caller:     conf.Caller,
+		Fn:         conf.Fn,
+		CallerSkip: conf.CallerSkip,
 	})
 	return driver
 }
@@ -93,6 +95,10 @@ var logger = NewLogger(Config{
 	Level:   "debug",
 	Encoder: "console",
 })
+
+func SetDefaultLogger(l Logger) {
+	logger = l
+}
 
 func Debug(args ...interface{}) {
 	logger.Debug(args...)

@@ -27,7 +27,7 @@ func NewProvider(conf config.Config) (Provider, func(), error) {
 	for k, c := range cfg {
 		m, ok := c.(map[string]interface{})
 		if !ok {
-			return nil, nil, fmt.Errorf("db.db configuration format error")
+			return nil, nil, fmt.Errorf("db configuration format error")
 		}
 		dsn := fmt.Sprintf("%s:%s@(%s:%d)/%s?charset=%s",
 			m["username"],
@@ -40,7 +40,7 @@ func NewProvider(conf config.Config) (Provider, func(), error) {
 
 		driver := cast.ToString(m["driver"])
 		if !slices.Contains([]string{"mysql", "pg"}, driver) {
-			return nil, nil, fmt.Errorf("db.db.%s.driver not supported, driver = {%s}", k, driver)
+			return nil, nil, fmt.Errorf("db.%s.driver not supported, driver = {%s}", k, driver)
 		}
 
 		engine, err := xorm.NewEngine(cast.ToString(m["driver"]), dsn)
@@ -63,7 +63,6 @@ func NewProvider(conf config.Config) (Provider, func(), error) {
 		})
 		engines[k] = engine
 	}
-
 	provider := &dbProvider{engines}
 
 	return provider, provider.cleanup, nil
